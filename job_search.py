@@ -1,5 +1,7 @@
 import yaml
 import urllib.parse
+import requests
+from bs4 import BeautifulSoup
 
 def load_preferences():
     with open("preferences.txt", "r") as f:
@@ -12,12 +14,9 @@ def load_preferences():
 
 
 def extract_preferences(data):
-    # Extract job titles
     job_titles = data.get("job_titles", [])
-    # Flatten nested lists if needed
     job_titles = [item for sublist in job_titles for item in (sublist if isinstance(sublist, list) else [sublist])]
 
-    # Extract AU location
     au_location = data.get("location", "Sydney, Australia")
 
     print("\n=== Parsed Preferences ===")
@@ -44,47 +43,69 @@ def add_nz_locations():
 def build_indeed_urls(job_titles, au_location, nz_locations):
     queries = []
 
-    # AU searches
     for job in job_titles:
         encoded_job = urllib.parse.quote_plus(job)
         encoded_loc = urllib.parse.quote_plus(au_location)
         url = f"https://au.indeed.com/jobs?q={encoded_job}&l={encoded_loc}"
-        queries.append({
-            "country": "AU",
-            "job_title": job,
-            "location": au_location,
-            "url": url
-        })
+        queries.append(("AU", job, au_location, url))
 
-    # NZ searches
     for job in job_titles:
         for loc in nz_locations:
             encoded_job = urllib.parse.quote_plus(job)
             encoded_loc = urllib.parse.quote_plus(loc)
             url = f"https://nz.indeed.com/jobs?q={encoded_job}&l={encoded_loc}"
-            queries.append({
-                "country": "NZ",
-                "job_title": job,
-                "location": loc,
-                "url": url
-            })
+            queries.append(("NZ", job, loc, url))
 
     print("\n=== Indeed Search URLs ===")
-    for q in queries:
-        print(f"[{q['country']}] {q['job_title']} in {q['location']}")
-        print(" ", q["url"])
+    for country, job, loc, url in queries:
+        print(f"[{country}] {job} in {loc}")
+        print(" ", url)
 
     return queries
 
 
-def simulate_job_search(queries):
-    print("\n=== Simulated Job Search ===")
-    print("This is only a test — no real job sites are contacted.")
+def fetch_indeed_results(url, max_results=5):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    }
 
-    for q in queries:
-        print(f"\nSearching: {q['job_title']} in {q['location']} ({q['country']})")
-        print("Example result:")
-        print(f"- {q['job_title']} role found in {q['location']} at ExampleCorp (simulated)")
+    response = requests.get(url, headers=headers)
+    soup = BeautifulSoup(response.text, "html.parser")
+
+    results = []
+    cards = soup.select("div.job_seen_beacon")
+
+    for card in cards[:max_results]:
+        title = card.select_one("h2.jobTitle span")
+        company = card.select_one("span.companyName")
+        link = card.select_one("a")
+
+        if title and company and link:
+            job_title = title.text.strip()
+            company_name = company.text.strip()
+            job_link = "https://indeed.com" + link.get("href")
+
+            results.append((job_title, company_name, job_link))
+
+    return results
+
+
+def run_real_job_search(queries):
+    print("\n=== REAL JOB SEARCH RESULTS ===")
+
+    for country, job, loc, url in queries:
+        print(f"\nSearching for: {job} in {loc} ({country})")
+        print("URL:", url)
+
+        results = fetch_indeed_results(url, max_results=5)
+
+        if not results:
+            print("No results found.")
+            continue
+
+        for title, company, link in results:
+            print(f"- {title} at {company}")
+            print(f"  {link}")
 
 
 if __name__ == "__main__":
@@ -92,4 +113,4 @@ if __name__ == "__main__":
     job_titles, au_location = extract_preferences(data)
     nz_locations = add_nz_locations()
     queries = build_indeed_urls(job_titles, au_location, nz_locations)
-    simulate_job_search(queries)
+    run_real_job_search(queries)
