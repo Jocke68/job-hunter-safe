@@ -1,0 +1,10 @@
+# Job Preferences
+location: Sydney, Australia
+job_titles:
+  - Warehouse Supervisor
+  - Distribution Centre Team Leader
+  - Operations Coordinator
+  - Logistics Supervisor
+employment_type:
+  - Full-time
+salary_expectation: open
