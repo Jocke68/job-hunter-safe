@@ -2,6 +2,9 @@ name: Job Search Automation
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "0 20 * * *"   # 07:00 Sydney time
+    - cron: "0 2 * * *"    # 13:00 Sydney time
 
 jobs:
   test-run:
