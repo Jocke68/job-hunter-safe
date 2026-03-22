@@ -82,7 +82,7 @@ def build_indeed_urls(job_titles, au_location, nz_locations):
 
 
 # ---------------------------------------------------------
-# Aggressive-mode scraper with multiple fallback selectors
+# Aggressive scraper + DEBUG HTML
 # ---------------------------------------------------------
 def fetch_indeed_results(url, max_results=5):
     headers = {
@@ -90,68 +90,45 @@ def fetch_indeed_results(url, max_results=5):
     }
 
     response = requests.get(url, headers=headers)
-    soup = BeautifulSoup(response.text, "html.parser")
+    html = response.text
+
+    # DEBUG: print first 500 chars of HTML
+    print("\n--- DEBUG HTML START ---")
+    print(html[:500])
+    print("--- DEBUG HTML END ---\n")
+
+    soup = BeautifulSoup(html, "html.parser")
 
     results = []
 
-    # --- 1) Modern layout: <a class="tapItem">
-    cards = soup.select("a.tapItem")
-    for card in cards:
-        title = card.select_one("h2.jobTitle span")
-        company = card.select_one("span.companyName")
-        link = card.get("href")
+    # Try multiple selectors (aggressive mode)
+    selectors = [
+        "a.tapItem",
+        "div.job_seen_beacon",
+        "td.resultContent",
+        "div.slider_container",
+        "h2.jobTitle span"
+    ]
 
-        if title and company and link:
-            results.append((title.text.strip(), company.text.strip(), "https://indeed.com" + link))
-        if len(results) >= max_results:
-            return results
+    for selector in selectors:
+        cards = soup.select(selector)
+        for card in cards:
+            title = card.select_one("h2.jobTitle span")
+            company = card.select_one("span.companyName")
 
-    # --- 2) Older layout: <div class="job_seen_beacon">
-    cards = soup.select("div.job_seen_beacon")
-    for card in cards:
-        title = card.select_one("h2.jobTitle span")
-        company = card.select_one("span.companyName")
-        link = card.select_one("a")
+            # Determine link
+            link = None
+            if card.name == "a":
+                link = card.get("href")
+            else:
+                parent = card.find_parent("a")
+                if parent:
+                    link = parent.get("href")
 
-        if title and company and link:
-            results.append((title.text.strip(), company.text.strip(), "https://indeed.com" + link.get("href")))
-        if len(results) >= max_results:
-            return results
-
-    # --- 3) Mobile layout: <td class="resultContent">
-    cards = soup.select("td.resultContent")
-    for card in cards:
-        title = card.select_one("h2.jobTitle span")
-        company = card.select_one("span.companyName")
-        link = card.find_parent("a")
-
-        if title and company and link:
-            results.append((title.text.strip(), company.text.strip(), "https://indeed.com" + link.get("href")))
-        if len(results) >= max_results:
-            return results
-
-    # --- 4) Experimental slider layout
-    cards = soup.select("div.slider_container")
-    for card in cards:
-        title = card.select_one("h2.jobTitle span")
-        company = card.select_one("span.companyName")
-        link = card.select_one("a")
-
-        if title and company and link:
-            results.append((title.text.strip(), company.text.strip(), "https://indeed.com" + link.get("href")))
-        if len(results) >= max_results:
-            return results
-
-    # --- 5) Final fallback: any jobTitle + nearest link
-    titles = soup.select("h2.jobTitle span")
-    for t in titles:
-        parent = t.find_parent("a")
-        company = t.find_parent().find_next("span", class_="companyName")
-
-        if parent and company:
-            results.append((t.text.strip(), company.text.strip(), "https://indeed.com" + parent.get("href")))
-        if len(results) >= max_results:
-            return results
+            if title and company and link:
+                results.append((title.text.strip(), company.text.strip(), "https://indeed.com" + link))
+                if len(results) >= max_results:
+                    return results
 
     return results
 
