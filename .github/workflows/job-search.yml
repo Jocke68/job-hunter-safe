@@ -7,5 +7,11 @@ jobs:
   test-run:
     runs-on: ubuntu-latest
     steps:
-      - name: Check repository contents
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: List files
         run: ls -R .
+
+      - name: Show preferences file
+        run: cat preferences.txt
