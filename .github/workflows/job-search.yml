@@ -15,3 +15,6 @@ jobs:
 
       - name: Show preferences file
         run: cat preferences.txt
+
+      - name: Run job search script
+        run: python3 job_search.py
