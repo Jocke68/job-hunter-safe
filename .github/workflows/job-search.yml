@@ -3,21 +3,25 @@ name: Job Search Automation
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 20 * * *"   # 07:00 Sydney time
-    - cron: "0 2 * * *"    # 13:00 Sydney time
+    - cron: "0 */12 * * *"
 
 jobs:
   test-run:
     runs-on: ubuntu-latest
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
 
       - name: List files
-        run: ls -R .
+        run: ls -R
 
       - name: Show preferences file
         run: cat preferences.txt
+
+      - name: Install dependencies
+        run: |
+          pip install beautifulsoup4 requests
 
       - name: Run job search script
         run: python3 job_search.py
