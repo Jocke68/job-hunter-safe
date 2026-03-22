@@ -1,3 +1,5 @@
+import urllib.parse
+
 def load_preferences():
     with open("preferences.txt", "r") as f:
         lines = [line.strip() for line in f.readlines() if line.strip()]
@@ -11,13 +13,12 @@ def load_preferences():
 
 def split_preferences(lines):
     job_titles = []
-    locations = []
+    au_locations = []
 
     for line in lines:
-        # Simple rule:
-        # If it contains words like "Sydney", "Beaches", "NSW", treat as location
+        # Treat these as AU locations
         if any(keyword.lower() in line.lower() for keyword in ["sydney", "beaches", "nsw", "australia"]):
-            locations.append(line)
+            au_locations.append(line)
         else:
             job_titles.append(line)
 
@@ -26,27 +27,56 @@ def split_preferences(lines):
     for job in job_titles:
         print(" -", job)
 
-    print("Locations:")
-    for loc in locations:
+    print("AU Locations:")
+    for loc in au_locations:
         print(" -", loc)
 
-    return job_titles, locations
+    return job_titles, au_locations
 
 
-def build_search_queries(job_titles, locations):
+def add_nz_locations():
+    nz_locations = ["Christchurch", "Queenstown"]
+
+    print("\nNZ Locations (added automatically):")
+    for loc in nz_locations:
+        print(" -", loc)
+
+    return nz_locations
+
+
+def build_indeed_urls(job_titles, au_locations, nz_locations):
     queries = []
 
+    # AU searches
     for job in job_titles:
-        for loc in locations:
+        for loc in au_locations:
+            encoded_job = urllib.parse.quote_plus(job)
+            encoded_loc = urllib.parse.quote_plus(loc)
+            url = f"https://au.indeed.com/jobs?q={encoded_job}&l={encoded_loc}"
             queries.append({
+                "country": "AU",
                 "job_title": job,
                 "location": loc,
-                "query_string": f"{job} in {loc}"
+                "url": url
             })
 
-    print("\n=== Search Plan ===")
+    # NZ searches
+    for job in job_titles:
+        for loc in nz_locations:
+            encoded_job = urllib.parse.quote_plus(job)
+            encoded_loc = urllib.parse.quote_plus(loc)
+            url = f"https://nz.indeed.com/jobs?q={encoded_job}&l={encoded_loc}"
+            queries.append({
+                "country": "NZ",
+                "job_title": job,
+                "location": loc,
+                "url": url
+            })
+
+    print("\n=== Indeed Search URLs ===")
     for q in queries:
-        print(f"- {q['query_string']}")
+        print(f"[{q['country']}] {q['job_title']} in {q['location']}")
+        print(" ", q["url"])
 
     return queries
 
@@ -56,13 +86,14 @@ def simulate_job_search(queries):
     print("This is only a test — no real job sites are contacted.")
 
     for q in queries:
-        print(f"\nSearching for: {q['query_string']}")
+        print(f"\nSearching: {q['job_title']} in {q['location']} ({q['country']})")
         print("Example result:")
         print(f"- {q['job_title']} role found in {q['location']} at ExampleCorp (simulated)")
 
 
 if __name__ == "__main__":
     lines = load_preferences()
-    job_titles, locations = split_preferences(lines)
-    queries = build_search_queries(job_titles, locations)
+    job_titles, au_locations = split_preferences(lines)
+    nz_locations = add_nz_locations()
+    queries = build_indeed_urls(job_titles, au_locations, nz_locations)
     simulate_job_search(queries)
