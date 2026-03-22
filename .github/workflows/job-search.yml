@@ -1,0 +1,11 @@
+name: Job Search Automation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check repository contents
+        run: ls -R .
